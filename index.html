@@ -284,7 +284,7 @@ async function putRemote(text, stamp) {
 }
 function adopt(remote) {
   const d = JSON.parse(remote.text);
-  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts', 'stops']) if (!Array.isArray(d[k])) d[k] = [];
   if (!Array.isArray(d.categories)) d.categories = ['Benzina', 'Semi', 'Terriccio', 'Piante', 'Attrezzi', 'Altro'];
   for (const w of d.works) {
     const b = blankWork(w.date);
@@ -436,6 +436,42 @@ function editWork(orig, isNew) {
   });
 }
 
+// ---------- Giorni di stop ----------
+const STOP_REASONS = ['Pioggia', 'Maltempo/vento', 'Malattia', 'Ferie', 'Altro'];
+const STOP_ICON = { 'Pioggia': '☔', 'Maltempo/vento': '💨', 'Malattia': '🤒', 'Ferie': '🏖️', 'Altro': '⏸️' };
+const stopIcon = (r) => STOP_ICON[r] || '⏸️';
+function stopOn(day) { return S.data.stops.find((x) => { const d = pDMY(x.date); return d && sameDay(d, day); }); }
+function editStop(orig, isNew) {
+  const x = JSON.parse(JSON.stringify(orig));
+  let to = '';
+  const box = el('div', null,
+    el('div', { class: 'grid2' },
+      fld('Motivo', selectField(() => x.reason, (v) => x.reason = v, STOP_REASONS)),
+      fld('Data', dateField(() => x.date, (v) => x.date = v))),
+    isNew ? fld('Fino al (se più giorni di fila)', dateField(() => to, (v) => to = v)) : null,
+    fld('Nota', textField(() => x.note, (v) => x.note = v)),
+    isNew ? null : el('div', { style: 'margin-top:8px' }, el('button', { class: 'danger', onclick: () => {
+      if (!confirm('Togliere questo giorno di stop?')) return;
+      S.data.stops.splice(S.data.stops.findIndex((y) => y.id === orig.id), 1); touch(); render(); $('#dlg').close(); } }, 'Elimina giorno di stop')));
+  openDialog(isNew ? 'Giorno di stop' : 'Modifica giorno di stop', () => box, () => {
+    const a = pDMY(x.date);
+    if (!a) { alert('Scrivi una data valida.'); return false; }
+    if (!isNew) {
+      const i = S.data.stops.findIndex((y) => y.id === orig.id);
+      if (i >= 0) S.data.stops[i] = { id: orig.id, date: fDMY(a), reason: x.reason, note: x.note || '' };
+      touch(); render(); return;
+    }
+    let b = pDMY(to); if (!b || b < a) b = a;
+    let n = 0;
+    for (let d = new Date(a); d <= b && n < 62; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1), n++) {
+      const ex = stopOn(d);
+      if (ex) { ex.reason = x.reason; ex.note = x.note || ''; }
+      else S.data.stops.push({ id: newId(), date: fDMY(d), reason: x.reason, note: x.note || '' });
+    }
+    touch(); render();
+  }, 'Salva');
+}
+
 // ---------- Agenda ----------
 function viewAgenda() {
   const d = S.data, cal = S.cal;
@@ -457,9 +493,11 @@ function viewAgenda() {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     if (i >= 35 && day.getMonth() !== cal.getMonth()) break;
     const its = items(day);
+    const st = stopOn(day);
     cells.push(el('div', { class: 'day' + (sameDay(day, S.sel) ? ' sel' : '') + (sameDay(day, today) ? ' today' : '') + (day.getMonth() !== cal.getMonth() ? ' out' : ''),
       onclick: () => { S.sel = day; render(); } },
       el('div', { class: 'n' }, day.getDate()),
+      st ? el('div', { class: 'it', style: 'background:rgba(100,116,139,.22)', title: 'Stop: ' + st.reason }, stopIcon(st.reason) + ' ' + st.reason) : null,
       its.slice(0, 3).map((it) => el('div', { class: 'it', style: colorFor(it) }, it.e ? it.e.title : (it.w.client || '(senza cliente)'))),
       its.length > 3 ? el('div', { class: 'more' }, '+' + (its.length - 3) + ' altri') : null));
   }
@@ -472,9 +510,14 @@ function viewAgenda() {
       el('button', { onclick: () => nav(1) }, '›'),
       el('button', { onclick: () => { S.cal = dayOnly(new Date()); S.sel = dayOnly(new Date()); render(); } }, 'Oggi'),
       el('span', { class: 'sp' }),
+      el('button', { onclick: () => editStop({ id: newId(), date: fDMY(S.sel), reason: STOP_REASONS[0], note: '' }, true) }, '+ Giorno di stop'),
       el('button', { class: 'primary', onclick: () => editWork(blankWork(fDMY(S.sel)), true) }, '+ Nuovo lavoro')),
     el('div', { class: 'cal' }, cells),
     el('h3', { style: 'margin:16px 0 8px' }, S.sel.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })),
+    stopOn(S.sel) ? el('div', { class: 'card', style: 'display:flex;gap:10px;align-items:center;margin-bottom:8px' },
+      el('span', { style: 'font-size:20px' }, stopIcon(stopOn(S.sel).reason)),
+      el('strong', { style: 'flex:1' }, 'Stop: ' + stopOn(S.sel).reason, el('span', { class: 'muted', style: 'font-weight:400' }, stopOn(S.sel).note ? ' — ' + stopOn(S.sel).note : '')),
+      el('button', { onclick: () => editStop(stopOn(S.sel)) }, 'Modifica')) : null,
     list.length ? el('div', { class: 'card' }, list.map((it) => it.w
       ? el('div', { style: 'display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)' },
         el('span', { class: 'muted', style: 'width:48px' }, it.w.time),
@@ -484,7 +527,7 @@ function viewAgenda() {
       : el('div', { style: 'display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)' },
         el('span', { class: 'muted', style: 'width:48px' }, it.e.time), el('strong', { style: 'flex:1' }, it.e.title, el('span', { class: 'muted', style: 'font-weight:400' }, ' — impegno')),
         el('button', { onclick: () => { S.tab = 'impegni'; render(); } }, 'Vai agli impegni'))))
-      : el('div', { class: 'muted' }, 'Niente in programma in questo giorno.'));
+      : (stopOn(S.sel) ? null : el('div', { class: 'muted' }, 'Niente in programma in questo giorno.')));
 }
 
 // ---------- Lavori ----------
@@ -709,6 +752,13 @@ function viewSummary() {
       kpi('Incassato con fattura', tInv), kpi('Incassato in contanti', tCash), tOth > 0 ? kpi('Tipo non indicato', tOth, 'color:var(--orange)') : null,
       kpi('Totale incassato', tInv + tCash + tOth), kpi('Spese', tSp), kpi('Utile', tInv + tCash + tOth - tSp),
       kpi('Da incassare (totale)', owed, 'color:var(--orange)'), kpi('Manca al limite forfettario', LIMIT - tInv)),
+    (() => {
+      const mine = d.stops.filter((x) => { const t = pDMY(x.date); return t && t.getFullYear() === y; });
+      if (!mine.length) return null;
+      const by = {}; for (const x of mine) by[x.reason] = (by[x.reason] || 0) + 1;
+      return el('div', { class: 'card', style: 'margin:0 0 12px' }, el('strong', null, 'Giorni di stop ' + y + ': ' + mine.length),
+        el('span', { class: 'muted' }, '  ' + Object.keys(by).map((k) => stopIcon(k) + ' ' + k + ' ' + by[k]).join(' · ')));
+    })(),
     el('table', null,
       el('thead', null, el('tr', null, ['Mese', 'Fattura', 'Contanti', 'Non indicato', 'Incassato', 'Spese', 'Utile'].map((h) => el('th', { class: h === 'Mese' ? '' : 'right' }, h)))),
       el('tbody', null, MONTHS.map((m, i) => el('tr', null,
