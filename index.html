@@ -650,14 +650,15 @@ function viewExpenses() {
     el('datalist', { id: 'cats' }, d.categories.map((c) => el('option', { value: c }))),
     el('div', { class: 'bar' },
       el('select', { onchange: (e) => { f.ey = e.target.value; render(); } }, el('option', { value: '' }, 'Tutti gli anni'), years.map((y) => el('option', { value: String(y), selected: String(y) === f.ey }, y))),
-      el('span', { class: 'sp' }), el('span', { class: 'muted' }, list.length + ' spese • ' + eur(total)),
-      el('button', { class: 'primary', onclick: () => { d.expenses.push({ id: newId(), category: d.categories[0] || 'Altro', amount: 0, date: fDMY(new Date()), note: '' }); touch(); render(); } }, '+ Nuova spesa')),
+      el('span', { class: 'sp' }), el('span', { class: 'muted' }, list.length + ' spese • ' + eur(total) + ' (contanti ' + eur(list.filter((e) => e.method === 'Contanti').reduce((a, e) => a + num(e.amount), 0)) + ' • digitale ' + eur(list.filter((e) => e.method === 'Digitale').reduce((a, e) => a + num(e.amount), 0)) + ')'),
+      el('button', { class: 'primary', onclick: () => { d.expenses.push({ id: newId(), category: d.categories[0] || 'Altro', amount: 0, date: fDMY(new Date()), note: '', method: 'Digitale' }); touch(); render(); } }, '+ Nuova spesa')),
     el('div', { class: 'scroll' }, el('table', null,
-      el('thead', null, el('tr', null, ['Data', 'Categoria', 'Descrizione', 'Importo', ''].map((h) => el('th', null, h)))),
+      el('thead', null, el('tr', null, ['Data', 'Categoria', 'Descrizione', 'Pagamento', 'Importo', ''].map((h) => el('th', null, h)))),
       el('tbody', null, list.map((e) => el('tr', null,
         el('td', { style: 'width:130px' }, dateField(() => e.date, (v) => e.date = v)),
         el('td', { style: 'width:190px' }, textField(() => e.category, (v) => { e.category = v; if (v && !d.categories.includes(v)) d.categories.push(v); }, { list: 'cats' })),
         el('td', null, textField(() => e.note, (v) => e.note = v)),
+        el('td', { style: 'width:120px' }, selectField(() => e.method || '', (v) => e.method = v, [['', '—'], ['Contanti', 'Contanti'], ['Digitale', 'Digitale']], render)),
         el('td', { class: 'num', style: 'width:110px' }, moneyField(() => e.amount, (v) => e.amount = v)),
         el('td', null, el('button', { class: 'danger', onclick: () => { d.expenses.splice(d.expenses.indexOf(e), 1); touch(); render(); } }, '✕'))))))));
 }
