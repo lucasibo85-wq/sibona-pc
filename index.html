@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sibona Giardini - Computer</title>
+<style>
+:root{
+  --green:#15803d; --green-soft:#e8f5ec; --bg:#f4f6f4; --card:#ffffff; --text:#1c241e;
+  --muted:#6b756d; --line:#dfe5e0; --red:#b91c1c; --orange:#c2410c; --blue:#1d4ed8;
+  --input:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --green:#4ade80; --green-soft:#1d3a27; --bg:#171b18; --card:#222823; --text:#e8eee9;
+    --muted:#9aa59c; --line:#364037; --red:#f87171; --orange:#fb923c; --blue:#7aa2ff; --input:#1b201c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:var(--text)}
+input,select,textarea{background:var(--input);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:-1px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--green)}
+button.primary{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){ button.primary{color:#06240f} }
+button.danger{color:var(--red)}
+button:disabled{opacity:.45;cursor:default}
+header{position:sticky;top:0;z-index:5;background:var(--green);color:#fff;display:flex;gap:12px;align-items:center;padding:10px 18px;flex-wrap:wrap}
+@media (prefers-color-scheme: dark){ header{background:#14532d;color:#e8eee9} }
+header h1{font-size:18px;margin:0;flex:1}
+header .state{font-size:13px;opacity:.95}
+header button{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:inherit}
+header button.primary{background:#fff;color:#14532d;border-color:#fff}
+nav{display:flex;gap:4px;padding:10px 18px 0;flex-wrap:wrap;border-bottom:1px solid var(--line);background:var(--card)}
+nav button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:8px 12px;font-weight:600;color:var(--muted)}
+nav button.on{color:var(--green);border-bottom-color:var(--green)}
+main{padding:16px 18px 60px;max-width:1500px;margin:0 auto}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.bar .sp{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{position:sticky;top:0;background:var(--green-soft);text-align:left;font-size:12px;padding:7px 6px;white-space:nowrap}
+td{padding:4px 5px;border-top:1px solid var(--line);vertical-align:middle}
+td input,td select{width:100%}
+td.num input{text-align:right}
+tr.warn td{background:rgba(234,88,12,.09)}
+.chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.s-Programmato{background:rgba(29,78,216,.14);color:var(--blue)}
+.s-Da-incassare{background:rgba(234,88,12,.15);color:var(--orange)}
+.s-Pagato{background:rgba(21,128,61,.15);color:var(--green)}
+.muted{color:var(--muted)}
+.right{text-align:right}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fld{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.fld label{font-size:12px;color:var(--muted)}
+.fld input,.fld select,.fld textarea{width:100%}
+#login{max-width:380px;margin:12vh auto;padding:0 16px}
+#login .card{display:flex;flex-direction:column;gap:10px}
+#login h1{margin:0 0 4px;color:var(--green);font-size:22px}
+.err{color:var(--red);font-size:13px;min-height:18px}
+dialog{border:none;border-radius:14px;padding:0;max-width:min(860px,96vw);width:100%;background:var(--card);color:var(--text);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog .in{padding:18px;max-height:88vh;overflow:auto}
+dialog h2{margin:0 0 12px;font-size:18px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .dh{font-size:12px;color:var(--muted);text-align:center;padding:4px}
+.cal .day{min-height:84px;border:1px solid var(--line);border-radius:8px;padding:4px;background:var(--card);cursor:pointer;overflow:hidden}
+.cal .day.sel{outline:2px solid var(--green)}
+.cal .day.today .n{background:var(--green);color:#fff;border-radius:99px;padding:0 6px}
+.cal .day.out{opacity:.4}
+.cal .n{font-weight:700;font-size:12px;display:inline-block}
+.cal .it{font-size:11px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal .more{font-size:11px;color:var(--muted)}
+.tot{font-weight:700}
+.pill{display:inline-flex;gap:6px;align-items:center;background:var(--green-soft);border-radius:99px;padding:2px 4px 2px 10px;margin:2px}
+.pill button{border:none;background:none;padding:0 6px;color:var(--red);font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.kpi .l{font-size:12px;color:var(--muted)} .kpi .v{font-size:20px;font-weight:700}
+.scroll{overflow:auto;max-height:calc(100vh - 260px)}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="card">
+    <h1>Sibona Giardini</h1>
+    <div class="muted">Versione per computer. Accedi con lo stesso account che usi nell'app.</div>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="primary" id="go">Accedi</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Sibona Giardini</h1>
+    <span class="state" id="state"></span>
+    <button id="reload">Ricarica dal cloud</button>
+    <button class="primary" id="save" disabled>Salva sul cloud</button>
+    <button id="logout">Esci</button>
+  </header>
+  <nav id="tabs"></nav>
+  <main id="main"></main>
+</div>
+
+<dialog id="dlg"><div class="in" id="dlgBody"></div></dialog>
+
+<script>
+'use strict';
+const API_KEY = 'AIzaSyCO42i00gxtWvEPdDsanTDdrK6gfcYTeK4';
+const PROJECT = 'sibona-giardini';
+const STATUSES = ['Programmato', 'Da incassare', 'Pagato'];
+const BILLINGS = ['', 'Fattura', 'Contanti'];
+const REPEATS = [['', 'Mai'], ['w1', 'Ogni settimana'], ['w2', 'Ogni 2 settimane'], ['w3', 'Ogni 3 settimane'], ['w4', 'Ogni 4 settimane'], ['m1', 'Ogni mese']];
+const DEBT_KINDS = ['Fattura da pagare', 'Prestito', 'Finanziamento', 'Altro'];
+const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const LIMIT = 85000;
+
+// ---------- piccoli strumenti ----------
+const $ = (s) => document.querySelector(s);
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') e.style.cssText = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'value') e.value = v;
+    else if (v === true) e.setAttribute(k, '');
+    else e.setAttribute(k, v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+const pad = (n) => String(n).padStart(2, '0');
+function pDMY(s) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const d = new Date(+m[3], +m[2] - 1, +m[1]);
+  return d.getMonth() === +m[2] - 1 ? d : null;
+}
+const fDMY = (d) => pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+function toISO(s) { const d = pDMY(s); return d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : ''; }
+function fromISO(s) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const dayOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function num(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  const n = parseFloat(String(v == null ? '' : v).trim().replace(',', '.'));
+  return isFinite(n) ? n : 0;
+}
+const r2 = (n) => Math.round(n * 100) / 100;
+const eur = (n) => num(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+const newId = () => String(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+const lc = (s) => String(s || '').trim().toLowerCase();
+
+// ---------- regole sui lavori (come nell'app) ----------
+function paidSum(w) { return (w.payments || []).reduce((a, m) => a + num(m.amount), 0); }
+function pays(w) {
+  if (w.payments && w.payments.length) {
+    return w.payments.map((m) => ({ date: pDMY(m.date) || pDMY(w.date), amount: num(m.amount), billing: m.billing || '' }));
+  }
+  if (w.status === 'Pagato') {
+    return [{ date: pDMY(w.paidDate) || pDMY(w.date), amount: num(w.price), billing: w.billing || '' }];
+  }
+  return [];
+}
+function residual(w) {
+  if (w.status === 'Pagato') return 0;
+  const r = num(w.price) - paidSum(w);
+  return r > 0.004 ? r : 0;
+}
+function coversDay(w, d) {
+  const x = dayOnly(d), first = pDMY(w.date);
+  if (!first) return false;
+  if (sameDay(x, first)) return true;
+  const end = pDMY(w.endDate);
+  if (end && x >= first && x <= end) return true;
+  return (w.extraDays || []).some((e) => { const ed = pDMY(e); return ed && sameDay(ed, x); });
+}
+function setStatus(w, st) {
+  if (st === w.status) return;
+  const res = num(w.price) - paidSum(w);
+  if (st === 'Pagato') {
+    w.paidDate = fDMY(new Date());
+    if (w.payments && w.payments.length && res > 0.004) {
+      w.payments.push({ date: w.paidDate, amount: r2(res), billing: w.billing || '' });
+    }
+  } else if (w.status === 'Pagato' && w.payments && w.payments.length) {
+    w.payments.pop();
+    w.paidDate = '';
+  }
+  w.status = st;
+  fixWork(w);
+}
+function fixWork(w) {
+  w.price = num(w.price);
+  w.payments = w.payments || [];
+  if (w.payments.length) {
+    const sum = paidSum(w);
+    if (w.status === 'Pagato' && sum < w.price - 0.004) {
+      w.payments.push({ date: w.paidDate || w.date, amount: r2(w.price - sum), billing: w.billing || '' });
+    } else if (w.status !== 'Pagato' && w.price > 0 && sum >= w.price - 0.004) {
+      w.status = 'Pagato';
+      w.paidDate = w.payments[w.payments.length - 1].date;
+    }
+  }
+  if (w.status === 'Pagato') {
+    if (!w.paidDate) w.paidDate = w.date;
+    w.payMethod = w.billing === 'Fattura' ? 'Conto' : (w.billing === 'Contanti' ? 'Contanti' : '');
+  } else {
+    w.paidDate = '';
+    w.payMethod = '';
+  }
+}
+function blankWork(date) {
+  return { id: newId(), client: '', desc: '', date: date || fDMY(new Date()), time: '09:00', status: 'Programmato', price: 0, notes: '',
+    paidDate: '', billing: '', payMethod: '', repeat: '', followUp: false, lines: [], docs: [], toInvoice: false, payments: [],
+    endDate: '', photos: [], extraDays: [] };
+}
+function normStatus(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.startsWith('pagato')) return 'Pagato';
+  if (s.startsWith('in attesa') || s.startsWith('da incassare')) return 'Da incassare';
+  return 'Programmato';
+}
+
+// ---------- cloud ----------
+const S = { session: null, data: null, stamp: '', dirty: false, tab: 'agenda', cal: dayOnly(new Date()), sel: dayOnly(new Date()),
+  f: { q: '', st: '', sort: 'desc', year: String(new Date().getFullYear()) } };
+
+function errMsg(code) {
+  if (/EMAIL_NOT_FOUND|INVALID_PASSWORD|INVALID_LOGIN_CREDENTIALS/.test(code)) return 'Email o password non corrette.';
+  if (/TOO_MANY_ATTEMPTS/.test(code)) return 'Troppi tentativi: riprova tra qualche minuto.';
+  if (/USER_DISABLED/.test(code)) return 'Questo account è stato disattivato.';
+  if (/API key|referer|blocked/i.test(code)) return 'La chiave di accesso non permette questo sito. Scrivimi il messaggio e lo sistemo.';
+  return code ? 'Errore: ' + code : 'Errore di accesso.';
+}
+async function signIn(email, password) {
+  let r;
+  try {
+    r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }) });
+  } catch (e) { throw new Error('Nessuna connessione.'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(errMsg(d.error && d.error.message || ''));
+  S.session = { email, uid: d.localId, idToken: d.idToken, refresh: d.refreshToken, exp: Date.now() + (+d.expiresIn || 3600) * 1000 };
+}
+async function token() {
+  const s = S.session;
+  if (s.exp - Date.now() > 120000) return s.idToken;
+  const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(s.refresh) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('Sessione scaduta: accedi di nuovo.');
+  s.idToken = d.id_token; s.refresh = d.refresh_token || s.refresh; s.exp = Date.now() + (+d.expires_in || 3600) * 1000;
+  return s.idToken;
+}
+const docUrl = (q) => 'https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/users/' + S.session.uid + '/data/backup' + (q || '');
+async function fetchRemote() {
+  const r = await fetch(docUrl(), { headers: { Authorization: 'Bearer ' + await token() } });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(r.status === 403 || r.status === 401 ? 'Permesso negato dal cloud.' : 'Errore del cloud (' + r.status + ').');
+  const d = await r.json();
+  const f = d.fields || {};
+  const text = f.json && f.json.stringValue || '';
+  if (!text) return null;
+  return { text, stamp: f.updatedAt && f.updatedAt.stringValue || '' };
+}
+async function putRemote(text, stamp) {
+  if (new TextEncoder().encode(text).length > 900000) throw new Error('Troppi dati per il cloud (limite circa 1 MB).');
+  const r = await fetch(docUrl('?updateMask.fieldPaths=json&updateMask.fieldPaths=updatedAt'), {
+    method: 'PATCH', headers: { Authorization: 'Bearer ' + await token(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { json: { stringValue: text }, updatedAt: { stringValue: stamp } } }) });
+  if (!r.ok) throw new Error(r.status === 403 || r.status === 401 ? 'Permesso negato dal cloud.' : 'Errore del cloud (' + r.status + ').');
+}
+function adopt(remote) {
+  const d = JSON.parse(remote.text);
+  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts']) if (!Array.isArray(d[k])) d[k] = [];
+  if (!Array.isArray(d.categories)) d.categories = ['Benzina', 'Semi', 'Terriccio', 'Piante', 'Attrezzi', 'Altro'];
+  for (const w of d.works) {
+    const b = blankWork(w.date);
+    for (const k of Object.keys(b)) if (w[k] === undefined) w[k] = b[k];
+    w.status = normStatus(w.status);
+    w.price = num(w.price);
+  }
+  S.data = d; S.stamp = remote.stamp; S.dirty = false;
+}
+async function load() {
+  const remote = await fetchRemote();
+  if (!remote) throw new Error('Nel cloud non ci sono ancora dati: apri prima l\'app sul telefono.');
+  adopt(remote);
+}
+async function save() {
+  const btn = $('#save');
+  btn.disabled = true; btn.textContent = 'Salvo…';
+  try {
+    const remote = await fetchRemote();
+    if (remote && remote.stamp !== S.stamp) {
+      if (!confirm('Qualcuno ha cambiato i dati (per esempio dal telefono) dopo che hai aperto questa pagina.\n\nOK = sovrascrivo con le mie modifiche\nAnnulla = non salvo (poi puoi ricaricare dal cloud)')) { return; }
+    }
+    S.data.works.forEach(fixWork);
+    S.data.exported = new Date().toISOString();
+    const stamp = new Date().toISOString();
+    await putRemote(JSON.stringify(S.data), stamp);
+    S.stamp = stamp; S.dirty = false;
+    renderState(); render();
+    toast('Salvato sul cloud. Il telefono lo scarica alla prossima sincronizzazione.');
+  } catch (e) { alert(e.message || e); }
+  finally { btn.textContent = 'Salva sul cloud'; renderState(); }
+}
+function touch() { S.dirty = true; renderState(); }
+function renderState() {
+  const st = $('#state');
+  st.textContent = S.dirty ? 'Modifiche non ancora salvate' : (S.stamp ? 'Dati del ' + new Date(S.stamp).toLocaleString('it-IT') : '');
+  $('#save').disabled = !S.dirty;
+  document.title = (S.dirty ? '● ' : '') + 'Sibona Giardini - Computer';
+}
+let toastT;
+function toast(msg) {
+  let t = $('#toast');
+  if (!t) { t = el('div', { id: 'toast', style: 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;z-index:99;font-size:13px' }); document.body.append(t); }
+  t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 4500);
+}
+window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ---------- campi riutilizzabili ----------
+function dateField(get, set, onchange) {
+  return el('input', { type: 'date', value: toISO(get()), onchange: (e) => { set(fromISO(e.target.value)); touch(); if (onchange) onchange(); } });
+}
+function textField(get, set, opts) {
+  opts = opts || {};
+  return el('input', { type: opts.type || 'text', value: get() == null ? '' : get(), list: opts.list, placeholder: opts.ph, inputmode: opts.mode,
+    oninput: (e) => { set(e.target.value); touch(); }, onchange: opts.onchange });
+}
+function moneyField(get, set, onchange) {
+  return el('input', { type: 'text', inputmode: 'decimal', value: num(get()) ? String(num(get())).replace('.', ',') : '',
+    oninput: (e) => { set(num(e.target.value)); touch(); }, onchange: onchange });
+}
+function selectField(get, set, options, onchange) {
+  const cur = get();
+  return el('select', { onchange: (e) => { set(e.target.value); touch(); if (onchange) onchange(); } },
+    options.map((o) => { const v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : (o || '—'); return el('option', { value: v, selected: v === cur }, l); }));
+}
+function clientList() {
+  return el('datalist', { id: 'clientNames' }, S.data.clients.map((c) => el('option', { value: c.name })));
+}
+function ensureClient(name) {
+  const n = String(name || '').trim();
+  if (!n) return;
+  if (!S.data.clients.some((c) => lc(c.name) === lc(n))) S.data.clients.push({ id: newId(), name: n, address: '', phone: '', email: '' });
+}
+
+// ---------- finestra di modifica ----------
+function openDialog(title, build, onOk, okLabel) {
+  const body = $('#dlgBody');
+  body.replaceChildren();
+  const content = build();
+  const actions = el('div', { class: 'bar', style: 'margin:14px 0 0' },
+    el('span', { class: 'sp' }),
+    el('button', { onclick: () => $('#dlg').close() }, 'Annulla'),
+    el('button', { class: 'primary', onclick: () => { if (onOk() !== false) $('#dlg').close(); } }, okLabel || 'Fatto'));
+  body.append(el('h2', null, title), content, actions);
+  $('#dlg').showModal();
+}
+const fld = (label, input) => el('div', { class: 'fld' }, el('label', null, label), input);
+
+// ---------- scheda lavoro ----------
+function editWork(orig, isNew) {
+  const w = JSON.parse(JSON.stringify(orig));
+  let box;
+  const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
+  function build() {
+    const paysBox = el('div', null,
+      (w.payments || []).map((m, i) => el('div', { class: 'grid3', style: 'margin-bottom:4px;align-items:center' },
+        dateField(() => m.date, (v) => m.date = v),
+        moneyField(() => m.amount, (v) => m.amount = v),
+        el('div', { style: 'display:flex;gap:6px' }, selectField(() => m.billing || '', (v) => m.billing = v, BILLINGS),
+          el('button', { class: 'danger', title: 'Togli', onclick: () => { w.payments.splice(i, 1); redraw(); } }, '✕')))),
+      el('button', { onclick: () => { const rest = Math.max(0, num(w.price) - paidSum(w)); w.payments.push({ date: fDMY(new Date()), amount: r2(rest), billing: w.billing || '' }); redraw(); } }, '+ Registra pagamento'),
+      (w.payments || []).length ? el('div', { class: 'muted', style: 'margin-top:4px' }, 'Incassato ' + eur(paidSum(w)) + ' di ' + eur(w.price)) : null);
+    const extra = el('div', null,
+      (w.extraDays || []).map((e, i) => el('span', { class: 'pill' }, e, el('button', { onclick: () => { w.extraDays.splice(i, 1); redraw(); } }, '✕'))),
+      el('input', { type: 'date', onchange: (ev) => { const v = fromISO(ev.target.value); if (v && v !== w.date && !w.extraDays.includes(v)) { w.extraDays.push(v); w.extraDays.sort((a, b) => (pDMY(a) || 0) - (pDMY(b) || 0)); redraw(); } } }));
+    const lines = el('div', null,
+      (w.lines || []).map((l, i) => el('div', { style: 'display:grid;grid-template-columns:3fr 70px 100px 32px;gap:4px;margin-bottom:4px' },
+        textField(() => l.d, (v) => l.d = v),
+        textField(() => l.q, (v) => l.q = num(v), { mode: 'decimal' }),
+        moneyField(() => l.p, (v) => l.p = v),
+        el('button', { class: 'danger', onclick: () => { w.lines.splice(i, 1); redraw(); } }, '✕'))),
+      el('button', { onclick: () => { w.lines.push({ d: '', q: 1, p: 0 }); redraw(); } }, '+ Riga'),
+      el('span', { class: 'muted', style: 'margin-left:8px' }, 'Descrizione · quantità · prezzo (usate quando crei un PDF)'));
+    return el('div', null,
+      el('div', { class: 'grid2' },
+        fld('Cliente', textField(() => w.client, (v) => w.client = v, { list: 'clientNames' })),
+        fld('Descrizione', textField(() => w.desc, (v) => w.desc = v))),
+      el('div', { class: 'grid3' },
+        fld('Data (primo giorno)', dateField(() => w.date, (v) => w.date = v)),
+        fld('Ora', textField(() => w.time, (v) => w.time = v, { ph: '09:00' })),
+        fld('Fino al (se di seguito)', dateField(() => w.endDate, (v) => w.endDate = v))),
+      fld('Altri giorni di lavoro (anche non consecutivi)', extra),
+      el('div', { class: 'grid3' },
+        fld('Importo totale (€)', moneyField(() => w.price, (v) => w.price = v)),
+        fld('Stato', selectField(() => w.status, (v) => { setStatus(w, v); }, STATUSES, redraw)),
+        fld('Pagamento', selectField(() => w.billing || '', (v) => w.billing = v, BILLINGS))),
+      w.status === 'Pagato' ? el('div', { class: 'grid3' }, fld('Pagato il', dateField(() => w.paidDate, (v) => w.paidDate = v))) : null,
+      fld('Acconti e pagamenti ricevuti', paysBox),
+      el('div', { class: 'grid2' },
+        fld('Ripetizione', selectField(() => w.repeat || '', (v) => w.repeat = v, REPEATS)),
+        el('label', { style: 'display:flex;gap:8px;align-items:center;margin-top:18px' },
+          el('input', { type: 'checkbox', checked: !!w.toInvoice, onchange: (e) => { w.toInvoice = e.target.checked; } }), 'Da fatturare più avanti')),
+      fld('Note', el('textarea', { rows: 3, oninput: (e) => w.notes = e.target.value }, w.notes || '')),
+      fld('Righe del documento', lines),
+      (w.docs || []).length ? el('div', { class: 'muted' }, 'Documenti creati: ' + w.docs.join(' • ')) : null,
+      (w.photos || []).length ? el('div', { class: 'muted' }, (w.photos.length) + ' foto (si gestiscono dall\'app)') : null);
+  }
+  box = build();
+  openDialog(isNew ? 'Nuovo lavoro' : 'Modifica lavoro', () => box, () => {
+    if (!pDMY(w.date)) { alert('Scrivi una data valida per il lavoro.'); return false; }
+    w.client = String(w.client || '').trim();
+    w.endDate = pDMY(w.endDate) && pDMY(w.endDate) > pDMY(w.date) ? w.endDate : '';
+    w.extraDays = (w.extraDays || []).filter((e) => e !== w.date);
+    fixWork(w);
+    ensureClient(w.client);
+    const i = S.data.works.findIndex((x) => x.id === orig.id);
+    if (i >= 0) S.data.works[i] = w; else S.data.works.push(w);
+    touch(); render();
+  });
+}
+
+// ---------- Agenda ----------
+function viewAgenda() {
+  const d = S.data, cal = S.cal;
+  const first = new Date(cal.getFullYear(), cal.getMonth(), 1);
+  const offset = (first.getDay() + 6) % 7;
+  const start = new Date(cal.getFullYear(), cal.getMonth(), 1 - offset);
+  const today = dayOnly(new Date());
+  const items = (day) => {
+    const out = [];
+    for (const w of d.works) if (coversDay(w, day)) out.push({ w });
+    for (const e of d.events) { const ed = pDMY(e.date); if (ed && sameDay(ed, day)) out.push({ e }); }
+    out.sort((a, b) => String((a.w || a.e).time || '').localeCompare(String((b.w || b.e).time || '')));
+    return out;
+  };
+  const colorFor = (it) => it.e ? 'background:rgba(147,51,234,.18)' : 'background:' + ({ 'Pagato': 'rgba(21,128,61,.2)', 'Da incassare': 'rgba(234,88,12,.2)', 'Programmato': 'rgba(29,78,216,.18)' }[it.w.status]);
+  const cells = [];
+  for (const n of ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']) cells.push(el('div', { class: 'dh' }, n));
+  for (let i = 0; i < 42; i++) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    if (i >= 35 && day.getMonth() !== cal.getMonth()) break;
+    const its = items(day);
+    cells.push(el('div', { class: 'day' + (sameDay(day, S.sel) ? ' sel' : '') + (sameDay(day, today) ? ' today' : '') + (day.getMonth() !== cal.getMonth() ? ' out' : ''),
+      onclick: () => { S.sel = day; render(); } },
+      el('div', { class: 'n' }, day.getDate()),
+      its.slice(0, 3).map((it) => el('div', { class: 'it', style: colorFor(it) }, it.e ? it.e.title : (it.w.client || '(senza cliente)'))),
+      its.length > 3 ? el('div', { class: 'more' }, '+' + (its.length - 3) + ' altri') : null));
+  }
+  const list = items(S.sel);
+  const nav = (n) => { S.cal = new Date(cal.getFullYear(), cal.getMonth() + n, 1); render(); };
+  return el('div', null,
+    el('div', { class: 'bar' },
+      el('button', { onclick: () => nav(-1) }, '‹'),
+      el('strong', { style: 'min-width:150px;text-align:center' }, MONTHS[cal.getMonth()] + ' ' + cal.getFullYear()),
+      el('button', { onclick: () => nav(1) }, '›'),
+      el('button', { onclick: () => { S.cal = dayOnly(new Date()); S.sel = dayOnly(new Date()); render(); } }, 'Oggi'),
+      el('span', { class: 'sp' }),
+      el('button', { class: 'primary', onclick: () => editWork(blankWork(fDMY(S.sel)), true) }, '+ Nuovo lavoro')),
+    el('div', { class: 'cal' }, cells),
+    el('h3', { style: 'margin:16px 0 8px' }, S.sel.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })),
+    list.length ? el('div', { class: 'card' }, list.map((it) => it.w
+      ? el('div', { style: 'display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)' },
+        el('span', { class: 'muted', style: 'width:48px' }, it.w.time),
+        el('strong', { style: 'flex:1' }, it.w.client || '(senza cliente)', el('span', { class: 'muted', style: 'font-weight:400' }, ' — ' + (it.w.desc || ''))),
+        el('span', { class: 'chip s-' + it.w.status.replace(' ', '-') }, it.w.status),
+        el('button', { onclick: () => editWork(it.w) }, 'Modifica'))
+      : el('div', { style: 'display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)' },
+        el('span', { class: 'muted', style: 'width:48px' }, it.e.time), el('strong', { style: 'flex:1' }, it.e.title, el('span', { class: 'muted', style: 'font-weight:400' }, ' — impegno')),
+        el('button', { onclick: () => { S.tab = 'impegni'; render(); } }, 'Vai agli impegni'))))
+      : el('div', { class: 'muted' }, 'Niente in programma in questo giorno.'));
+}
+
+// ---------- Lavori ----------
+function viewWorks() {
+  const d = S.data, f = S.f;
+  const years = [...new Set(d.works.map((w) => (pDMY(w.date) || new Date(2000, 0, 1)).getFullYear()))].sort((a, b) => b - a);
+  let list = d.works.filter((w) => {
+    if (f.year && String((pDMY(w.date) || new Date(2000, 0, 1)).getFullYear()) !== f.year) return false;
+    if (f.st === 'check') { if (!(pDMY(w.date) == null || (w.status === 'Pagato' && !w.billing) || (w.status !== 'Pagato' && pDMY(w.date) && pDMY(w.date) < dayOnly(new Date()) && w.status === 'Programmato'))) return false; }
+    else if (f.st && w.status !== f.st) return false;
+    const q = lc(f.q);
+    if (q && !(lc(w.client).includes(q) || lc(w.desc).includes(q) || lc(w.notes).includes(q))) return false;
+    return true;
+  });
+  list.sort((a, b) => ((pDMY(a.date) || 0) - (pDMY(b.date) || 0)) * (f.sort === 'asc' ? 1 : -1));
+  const rows = list.map((w) => {
+    const warn = pDMY(w.date) == null || (w.status === 'Pagato' && !w.billing);
+    const tr = el('tr', { class: warn ? 'warn' : '' },
+      el('td', { style: 'width:128px' }, dateField(() => w.date, (v) => w.date = v)),
+      el('td', { style: 'width:128px' }, dateField(() => w.endDate, (v) => w.endDate = v)),
+      el('td', { style: 'width:74px' }, textField(() => w.time, (v) => w.time = v)),
+      el('td', { style: 'min-width:150px' }, textField(() => w.client, (v) => w.client = v, { list: 'clientNames', onchange: () => ensureClient(w.client) })),
+      el('td', { style: 'min-width:170px' }, textField(() => w.desc, (v) => w.desc = v)),
+      el('td', { class: 'num', style: 'width:92px' }, moneyField(() => w.price, (v) => w.price = v, () => { fixWork(w); })),
+      el('td', { style: 'width:140px' }, selectField(() => w.status, (v) => setStatus(w, v), STATUSES, render)),
+      el('td', { style: 'width:128px' }, w.status === 'Pagato' ? dateField(() => w.paidDate, (v) => w.paidDate = v) : el('span', { class: 'muted' }, '')),
+      el('td', { style: 'width:110px' }, selectField(() => w.billing || '', (v) => { w.billing = v; fixWork(w); }, BILLINGS)),
+      el('td', { class: 'right', style: 'white-space:nowrap' }, (w.payments || []).length ? eur(paidSum(w)) : (w.status === 'Pagato' ? eur(w.price) : '—')),
+      el('td', { style: 'white-space:nowrap' },
+        el('button', { onclick: () => editWork(w) }, 'Dettagli'), ' ',
+        el('button', { class: 'danger', title: 'Elimina', onclick: () => { if (confirm('Eliminare il lavoro di ' + (w.client || '(senza cliente)') + ' del ' + w.date + '?')) { d.works.splice(d.works.indexOf(w), 1); touch(); render(); } } }, '✕')));
+    return tr;
+  });
+  const total = list.reduce((a, w) => a + num(w.price), 0);
+  return el('div', null,
+    el('div', { class: 'bar' },
+      el('input', { type: 'search', placeholder: 'Cerca cliente, descrizione, note…', value: f.q, style: 'min-width:240px', oninput: (e) => { f.q = e.target.value; clearTimeout(viewWorks.t); viewWorks.t = setTimeout(() => { render(); const i = $('#main input[type=search]'); if (i) { i.focus(); i.setSelectionRange(f.q.length, f.q.length); } }, 250); } }),
+      el('select', { onchange: (e) => { f.year = e.target.value; render(); } }, el('option', { value: '' }, 'Tutti gli anni'), years.map((y) => el('option', { value: String(y), selected: String(y) === f.year }, y))),
+      el('select', { onchange: (e) => { f.st = e.target.value; render(); } },
+        [['', 'Tutti gli stati'], ['Programmato', 'Programmato'], ['Da incassare', 'Da incassare'], ['Pagato', 'Pagato'], ['check', 'Da controllare']].map(([v, l]) => el('option', { value: v, selected: v === f.st }, l))),
+      el('select', { onchange: (e) => { f.sort = e.target.value; render(); } }, el('option', { value: 'desc', selected: f.sort === 'desc' }, 'Più recenti prima'), el('option', { value: 'asc', selected: f.sort === 'asc' }, 'Più vecchi prima')),
+      el('span', { class: 'sp' }),
+      el('span', { class: 'muted' }, list.length + ' lavori • ' + eur(total)),
+      el('button', { class: 'primary', onclick: () => editWork(blankWork(), true) }, '+ Nuovo lavoro')),
+    el('div', { class: 'muted', style: 'margin-bottom:8px' }, '“Da controllare” mostra i lavori senza data valida, quelli Pagati senza tipo di pagamento e quelli rimasti Programmati con data passata. Le righe arancioni hanno qualcosa da sistemare.'),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Data', 'Fino al', 'Ora', 'Cliente', 'Descrizione', 'Importo', 'Stato', 'Pagato il', 'Tipo', 'Incassato', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, rows))));
+}
+
+// ---------- Clienti ----------
+function owedBy(name) { let t = 0; for (const w of S.data.works) if (w.status === 'Da incassare' && lc(w.client) === lc(name)) t += residual(w); return t; }
+function editClient(orig) {
+  const c = JSON.parse(JSON.stringify(orig));
+  let box;
+  const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
+  function build() {
+    return el('div', null,
+      el('div', { class: 'grid2' }, fld('Nome', textField(() => c.name, (v) => c.name = v)), fld('Telefono', textField(() => c.phone, (v) => c.phone = v))),
+      el('div', { class: 'grid2' }, fld('Indirizzo', textField(() => c.address, (v) => c.address = v)), fld('Email', textField(() => c.email, (v) => c.email = v))),
+      el('label', { style: 'display:flex;gap:8px;align-items:center;margin:6px 0' },
+        el('input', { type: 'checkbox', checked: !!c.billTo, onchange: (e) => { c.billTo = e.target.checked; redraw(); } }), 'Fatturo a un\'altra persona'),
+      c.billTo ? el('div', { class: 'grid3' },
+        fld('Intestatario', textField(() => c.billName, (v) => c.billName = v)),
+        fld('Indirizzo intestatario', textField(() => c.billAddress, (v) => c.billAddress = v)),
+        fld('Codice fiscale o P.IVA', textField(() => c.billTax, (v) => c.billTax = v))) : null,
+      el('label', { style: 'display:flex;gap:8px;align-items:center;margin:6px 0' },
+        el('input', { type: 'checkbox', checked: !!c.contract, onchange: (e) => { c.contract = e.target.checked; redraw(); } }), 'Contratto annuale (condominio)'),
+      c.contract ? el('div', { class: 'grid3' },
+        fld('Acconto di giugno (€)', moneyField(() => c.cA, (v) => c.cA = v)),
+        fld('Saldo di novembre (€)', moneyField(() => c.cB, (v) => c.cB = v))) : null);
+  }
+  box = build();
+  openDialog('Cliente', () => box, () => {
+    c.name = String(c.name || '').trim();
+    if (!c.name) { alert('Scrivi il nome.'); return false; }
+    const old = orig.name;
+    if (lc(old) !== lc(c.name) || old !== c.name) for (const w of S.data.works) if (lc(w.client) === lc(old)) w.client = c.name;
+    const i = S.data.clients.findIndex((x) => x.id === orig.id);
+    if (i >= 0) S.data.clients[i] = c; else S.data.clients.push(c);
+    touch(); render();
+  });
+}
+function viewClients() {
+  const d = S.data, q = lc(S.f.cq);
+  const list = d.clients.filter((c) => !q || lc(c.name).includes(q) || lc(c.address).includes(q) || lc(c.phone).includes(q) || lc(c.email).includes(q))
+    .sort((a, b) => lc(a.name).localeCompare(lc(b.name)));
+  return el('div', null,
+    el('div', { class: 'bar' },
+      el('input', { type: 'search', placeholder: 'Cerca nome, via, telefono…', value: S.f.cq || '', style: 'min-width:260px', oninput: (e) => { S.f.cq = e.target.value; clearTimeout(viewClients.t); viewClients.t = setTimeout(() => { render(); const i = $('#main input[type=search]'); if (i) { i.focus(); i.setSelectionRange(S.f.cq.length, S.f.cq.length); } }, 250); } }),
+      el('span', { class: 'sp' }), el('span', { class: 'muted' }, list.length + ' clienti'),
+      el('button', { class: 'primary', onclick: () => editClient({ id: newId(), name: '', address: '', phone: '', email: '' }) }, '+ Nuovo cliente')),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Nome', 'Indirizzo', 'Telefono', 'Email', 'Da incassare', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, list.map((c) => el('tr', null,
+        el('td', { style: 'min-width:170px' }, (() => {
+          let was = c.name;
+          return textField(() => c.name, (v) => c.name = v, { onchange: () => {
+            if (was !== c.name) { for (const w of d.works) if (lc(w.client) === lc(was)) w.client = c.name; was = c.name; touch(); }
+          } });
+        })()),
+        el('td', { style: 'min-width:220px' }, textField(() => c.address, (v) => c.address = v)),
+        el('td', { style: 'width:150px' }, textField(() => c.phone, (v) => c.phone = v)),
+        el('td', { style: 'min-width:190px' }, textField(() => c.email, (v) => c.email = v)),
+        el('td', { class: 'right' }, owedBy(c.name) > 0 ? el('span', { style: 'color:var(--orange);font-weight:600' }, eur(owedBy(c.name))) : ''),
+        el('td', { style: 'white-space:nowrap' },
+          el('button', { onclick: () => editClient(c) }, 'Dettagli'), ' ',
+          el('button', { class: 'danger', onclick: () => { if (confirm('Eliminare ' + c.name + ' dalla rubrica? I suoi lavori restano.')) { d.clients.splice(d.clients.indexOf(c), 1); touch(); render(); } } }, '✕'))))))),
+    el('div', { class: 'muted', style: 'margin-top:8px' }, 'Se cambi il nome di un cliente, si aggiorna anche nei suoi lavori.'));
+}
+
+// ---------- Spese ----------
+function viewExpenses() {
+  const d = S.data, f = S.f;
+  const years = [...new Set(d.expenses.map((e) => (pDMY(e.date) || new Date(2000, 0, 1)).getFullYear()))].sort((a, b) => b - a);
+  const list = d.expenses.filter((e) => !f.ey || String((pDMY(e.date) || new Date(2000, 0, 1)).getFullYear()) === f.ey)
+    .sort((a, b) => (pDMY(b.date) || 0) - (pDMY(a.date) || 0));
+  const total = list.reduce((a, e) => a + num(e.amount), 0);
+  return el('div', null,
+    el('datalist', { id: 'cats' }, d.categories.map((c) => el('option', { value: c }))),
+    el('div', { class: 'bar' },
+      el('select', { onchange: (e) => { f.ey = e.target.value; render(); } }, el('option', { value: '' }, 'Tutti gli anni'), years.map((y) => el('option', { value: String(y), selected: String(y) === f.ey }, y))),
+      el('span', { class: 'sp' }), el('span', { class: 'muted' }, list.length + ' spese • ' + eur(total)),
+      el('button', { class: 'primary', onclick: () => { d.expenses.push({ id: newId(), category: d.categories[0] || 'Altro', amount: 0, date: fDMY(new Date()), note: '' }); touch(); render(); } }, '+ Nuova spesa')),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Data', 'Categoria', 'Descrizione', 'Importo', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, list.map((e) => el('tr', null,
+        el('td', { style: 'width:130px' }, dateField(() => e.date, (v) => e.date = v)),
+        el('td', { style: 'width:190px' }, textField(() => e.category, (v) => { e.category = v; if (v && !d.categories.includes(v)) d.categories.push(v); }, { list: 'cats' })),
+        el('td', null, textField(() => e.note, (v) => e.note = v)),
+        el('td', { class: 'num', style: 'width:110px' }, moneyField(() => e.amount, (v) => e.amount = v)),
+        el('td', null, el('button', { class: 'danger', onclick: () => { d.expenses.splice(d.expenses.indexOf(e), 1); touch(); render(); } }, '✕'))))))));
+}
+
+// ---------- Debiti ----------
+function debtResidual(x) { const p = (x.payments || []).reduce((a, m) => a + num(m.amount), 0); const r = num(x.total) - p; return r > 0.004 ? r : 0; }
+function editDebt(orig, isNew) {
+  const x = JSON.parse(JSON.stringify(orig)); x.payments = x.payments || [];
+  let box;
+  const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
+  function build() {
+    return el('div', null,
+      el('div', { class: 'grid2' }, fld('A chi / per cosa', textField(() => x.name, (v) => x.name = v)), fld('Tipo', selectField(() => x.kind, (v) => x.kind = v, DEBT_KINDS))),
+      el('div', { class: 'grid3' }, fld('Importo totale (€)', moneyField(() => x.total, (v) => x.total = v)), fld('Scadenza', dateField(() => x.due, (v) => x.due = v)), fld('Note', textField(() => x.note, (v) => x.note = v))),
+      fld('Pagamenti fatti', el('div', null,
+        x.payments.map((m, i) => el('div', { class: 'grid3', style: 'margin-bottom:4px' }, dateField(() => m.date, (v) => m.date = v), moneyField(() => m.amount, (v) => m.amount = v),
+          el('div', null, el('button', { class: 'danger', onclick: () => { x.payments.splice(i, 1); redraw(); } }, '✕')))),
+        el('button', { onclick: () => { x.payments.push({ date: fDMY(new Date()), amount: r2(debtResidual(x)) }); redraw(); } }, '+ Registra pagamento'),
+        el('div', { class: 'muted', style: 'margin-top:4px' }, 'Residuo ' + eur(debtResidual(x))))));
+  }
+  box = build();
+  openDialog(isNew ? 'Nuovo debito' : 'Debito', () => box, () => {
+    if (!String(x.name || '').trim()) { alert('Scrivi un nome.'); return false; }
+    const i = S.data.debts.findIndex((y) => y.id === orig.id);
+    if (i >= 0) S.data.debts[i] = x; else S.data.debts.push(x);
+    touch(); render();
+  });
+}
+function viewDebts() {
+  const d = S.data;
+  const open = d.debts.reduce((a, x) => a + debtResidual(x), 0);
+  return el('div', null,
+    el('div', { class: 'bar' }, el('strong', null, 'Ancora da pagare: ' + eur(open)), el('span', { class: 'muted' }, '(separati dalle spese)'), el('span', { class: 'sp' }),
+      el('button', { class: 'primary', onclick: () => editDebt({ id: newId(), name: '', kind: 'Altro', total: 0, due: '', note: '', payments: [] }, true) }, '+ Nuovo debito')),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Nome', 'Tipo', 'Totale', 'Residuo', 'Scadenza', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, d.debts.map((x) => el('tr', null,
+        el('td', null, x.name), el('td', null, x.kind), el('td', { class: 'right' }, eur(x.total)),
+        el('td', { class: 'right' }, debtResidual(x) > 0 ? eur(debtResidual(x)) : '✓'), el('td', null, x.due || ''),
+        el('td', { style: 'white-space:nowrap' }, el('button', { onclick: () => editDebt(x) }, 'Modifica'), ' ',
+          el('button', { class: 'danger', onclick: () => { if (confirm('Eliminare il debito?')) { d.debts.splice(d.debts.indexOf(x), 1); touch(); render(); } } }, '✕'))))))));
+}
+
+// ---------- Listino, impegni, appunti ----------
+function simpleTable(list, cols, onAdd, addLabel) {
+  return el('div', null,
+    el('div', { class: 'bar' }, el('span', { class: 'sp' }), el('button', { class: 'primary', onclick: onAdd }, addLabel)),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, [...cols.map((c) => c.h), ''].map((h) => el('th', null, h)))),
+      el('tbody', null, list.map((it) => el('tr', null, cols.map((c) => el('td', { class: c.cls || '', style: c.w ? 'width:' + c.w : '' }, c.f(it))),
+        el('td', null, el('button', { class: 'danger', onclick: () => { list.splice(list.indexOf(it), 1); touch(); render(); } }, '✕'))))))));
+}
+const viewCatalog = () => simpleTable(S.data.catalog, [
+  { h: 'Voce', f: (x) => textField(() => x.name, (v) => x.name = v) },
+  { h: 'Prezzo', cls: 'num', w: '130px', f: (x) => moneyField(() => x.price, (v) => x.price = v) }],
+  () => { S.data.catalog.push({ id: newId(), name: '', price: 0 }); touch(); render(); }, '+ Nuova voce');
+const viewEvents = () => simpleTable(S.data.events, [
+  { h: 'Data', w: '140px', f: (x) => dateField(() => x.date, (v) => x.date = v) },
+  { h: 'Ora', w: '80px', f: (x) => textField(() => x.time, (v) => x.time = v) },
+  { h: 'Titolo', f: (x) => textField(() => x.title, (v) => x.title = v) },
+  { h: 'Note', f: (x) => textField(() => x.note, (v) => x.note = v) }],
+  () => { S.data.events.push({ id: newId(), title: '', date: fDMY(new Date()), time: '09:00', note: '' }); touch(); render(); }, '+ Nuovo impegno');
+const viewNotes = () => simpleTable(S.data.notes, [
+  { h: 'Data', w: '140px', f: (x) => dateField(() => x.date, (v) => x.date = v) },
+  { h: 'Ora', w: '80px', f: (x) => textField(() => x.time, (v) => x.time = v) },
+  { h: 'Appunto', f: (x) => textField(() => x.text, (v) => x.text = v) }],
+  () => { S.data.notes.push({ id: newId(), text: '', date: fDMY(new Date()), time: pad(new Date().getHours()) + ':' + pad(new Date().getMinutes()) }); touch(); render(); }, '+ Nuovo appunto');
+
+// ---------- Riepilogo ----------
+function viewSummary() {
+  const d = S.data;
+  const years = new Set([new Date().getFullYear()]);
+  for (const w of d.works) for (const p of pays(w)) if (p.date) years.add(p.date.getFullYear());
+  for (const e of d.expenses) { const x = pDMY(e.date); if (x) years.add(x.getFullYear()); }
+  const ylist = [...years].sort((a, b) => b - a);
+  const y = +S.f.sy || ylist[0];
+  const inv = Array(12).fill(0), cash = Array(12).fill(0), oth = Array(12).fill(0), sp = Array(12).fill(0);
+  for (const w of d.works) for (const p of pays(w)) {
+    if (!p.date || p.date.getFullYear() !== y) continue;
+    const m = p.date.getMonth();
+    if (p.billing === 'Fattura') inv[m] += p.amount; else if (p.billing === 'Contanti') cash[m] += p.amount; else oth[m] += p.amount;
+  }
+  for (const e of d.expenses) { const x = pDMY(e.date); if (x && x.getFullYear() === y) sp[x.getMonth()] += num(e.amount); }
+  const sum = (a) => a.reduce((s, v) => s + v, 0);
+  const tInv = sum(inv), tCash = sum(cash), tOth = sum(oth), tSp = sum(sp);
+  const owed = d.works.reduce((a, w) => a + (w.status === 'Da incassare' ? residual(w) : 0), 0);
+  const kpi = (l, v, st) => el('div', { class: 'card kpi' }, el('div', { class: 'l' }, l), el('div', { class: 'v', style: st || '' }, eur(v)));
+  return el('div', null,
+    el('div', { class: 'bar' }, el('select', { onchange: (e) => { S.f.sy = e.target.value; render(); } }, ylist.map((v) => el('option', { value: String(v), selected: v === y }, v))),
+      el('span', { class: 'muted' }, 'Ogni pagamento conta nel mese della sua data. Il forfettario conta solo i pagamenti con Fattura.')),
+    el('div', { class: 'kpis' },
+      kpi('Incassato con fattura', tInv), kpi('Incassato in contanti', tCash), tOth > 0 ? kpi('Tipo non indicato', tOth, 'color:var(--orange)') : null,
+      kpi('Totale incassato', tInv + tCash + tOth), kpi('Spese', tSp), kpi('Utile', tInv + tCash + tOth - tSp),
+      kpi('Da incassare (totale)', owed, 'color:var(--orange)'), kpi('Manca al limite forfettario', LIMIT - tInv)),
+    el('table', null,
+      el('thead', null, el('tr', null, ['Mese', 'Fattura', 'Contanti', 'Non indicato', 'Incassato', 'Spese', 'Utile'].map((h) => el('th', { class: h === 'Mese' ? '' : 'right' }, h)))),
+      el('tbody', null, MONTHS.map((m, i) => el('tr', null,
+        el('td', null, m[0].toUpperCase() + m.slice(1)), el('td', { class: 'right' }, eur(inv[i])), el('td', { class: 'right' }, eur(cash[i])), el('td', { class: 'right' }, eur(oth[i])),
+        el('td', { class: 'right' }, eur(inv[i] + cash[i] + oth[i])), el('td', { class: 'right' }, eur(sp[i])), el('td', { class: 'right' }, eur(inv[i] + cash[i] + oth[i] - sp[i])))),
+        el('tr', { class: 'tot' }, el('td', null, 'Totale'), el('td', { class: 'right' }, eur(tInv)), el('td', { class: 'right' }, eur(tCash)), el('td', { class: 'right' }, eur(tOth)),
+          el('td', { class: 'right' }, eur(tInv + tCash + tOth)), el('td', { class: 'right' }, eur(tSp)), el('td', { class: 'right' }, eur(tInv + tCash + tOth - tSp))))));
+}
+
+// ---------- schede e disegno ----------
+const TABS = [['agenda', 'Agenda', viewAgenda], ['lavori', 'Lavori', viewWorks], ['clienti', 'Clienti', viewClients], ['spese', 'Spese', viewExpenses],
+  ['debiti', 'Debiti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
+function render() {
+  const tabs = $('#tabs');
+  tabs.replaceChildren(...TABS.map(([id, label]) => el('button', { class: S.tab === id ? 'on' : '', onclick: () => { S.tab = id; render(); } }, label)));
+  const t = TABS.find((x) => x[0] === S.tab) || TABS[0];
+  const main = $('#main');
+  const y = window.scrollY;
+  main.replaceChildren(clientList(), t[2]());
+  window.scrollTo(0, y);
+}
+async function start() {
+  try { await load(); } catch (e) { $('#loginErr').textContent = e.message; $('#login').hidden = false; $('#app').hidden = true; return false; }
+  $('#login').hidden = true; $('#app').hidden = false;
+  renderState(); render();
+  return true;
+}
+$('#go').onclick = async () => {
+  const email = $('#email').value.trim(), pass = $('#pass').value;
+  $('#loginErr').textContent = '';
+  if (!email || !pass) { $('#loginErr').textContent = 'Scrivi email e password.'; return; }
+  $('#go').disabled = true; $('#go').textContent = 'Accedo…';
+  try { await signIn(email, pass); try { localStorage.setItem('sg_email', email); } catch (e) {} await start(); }
+  catch (e) { $('#loginErr').textContent = e.message; }
+  finally { $('#go').disabled = false; $('#go').textContent = 'Accedi'; }
+};
+$('#pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#go').click(); });
+$('#save').onclick = save;
+$('#reload').onclick = async () => {
+  if (S.dirty && !confirm('Hai modifiche non salvate: se ricarichi si perdono. Ricarico?')) return;
+  try { await load(); renderState(); render(); toast('Dati ricaricati dal cloud.'); } catch (e) { alert(e.message); }
+};
+$('#logout').onclick = () => { if (S.dirty && !confirm('Hai modifiche non salvate. Esco comunque?')) return; S.dirty = false; location.reload(); };
+try { $('#email').value = localStorage.getItem('sg_email') || ''; } catch (e) {}
+</script>
+</body>
+</html>
