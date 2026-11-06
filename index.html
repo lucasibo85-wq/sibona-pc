@@ -671,16 +671,16 @@ function editDebt(orig, isNew) {
   const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
   function build() {
     return el('div', null,
-      el('div', { class: 'grid2' }, fld('A chi / per cosa', textField(() => x.name, (v) => x.name = v)), fld('Tipo', selectField(() => x.kind, (v) => x.kind = v, DEBT_KINDS))),
+      el('div', { class: 'grid2' }, fld('A chi / per cosa', textField(() => x.name, (v) => x.name = v)), fld('Tipo', selectField(() => x.kind, (v) => x.kind = v, x.credit ? ['Prestito dato', 'Anticipo', 'Altro'] : DEBT_KINDS))),
       el('div', { class: 'grid3' }, fld('Importo totale (€)', moneyField(() => x.total, (v) => x.total = v)), fld('Scadenza', dateField(() => x.due, (v) => x.due = v)), fld('Note', textField(() => x.note, (v) => x.note = v))),
       fld('Pagamenti fatti', el('div', null,
-        x.payments.map((m, i) => el('div', { class: 'grid3', style: 'margin-bottom:4px' }, dateField(() => m.date, (v) => m.date = v), moneyField(() => m.amount, (v) => m.amount = v),
-          el('div', null, el('button', { class: 'danger', onclick: () => { x.payments.splice(i, 1); redraw(); } }, '✕')))),
-        el('button', { onclick: () => { x.payments.push({ date: fDMY(new Date()), amount: r2(debtResidual(x)) }); redraw(); } }, '+ Registra pagamento'),
-        el('div', { class: 'muted', style: 'margin-top:4px' }, 'Residuo ' + eur(debtResidual(x))))));
+        x.payments.map((m, i) => el('div', { style: 'display:flex;gap:6px;margin-bottom:4px;align-items:center' }, dateField(() => m.date, (v) => m.date = v), moneyField(() => m.amount, (v) => m.amount = v),
+          textField(() => m.note || '', (v) => m.note = v), el('button', { class: 'danger', onclick: () => { x.payments.splice(i, 1); redraw(); } }, '✕'))),
+        el('button', { onclick: () => { x.payments.push({ date: fDMY(new Date()), amount: r2(debtResidual(x)), note: '' }); redraw(); } }, x.credit ? '+ Registra incasso' : '+ Registra pagamento'),
+        el('div', { class: 'muted', style: 'margin-top:4px' }, (x.credit ? 'Da ricevere ' : 'Residuo ') + eur(debtResidual(x))))));
   }
   box = build();
-  openDialog(isNew ? 'Nuovo debito' : 'Debito', () => box, () => {
+  openDialog((x.credit ? 'Credito' : 'Debito') + (isNew ? ' (nuovo)' : ''), () => box, () => {
     if (!String(x.name || '').trim()) { alert('Scrivi un nome.'); return false; }
     const i = S.data.debts.findIndex((y) => y.id === orig.id);
     if (i >= 0) S.data.debts[i] = x; else S.data.debts.push(x);
@@ -689,17 +689,22 @@ function editDebt(orig, isNew) {
 }
 function viewDebts() {
   const d = S.data;
-  const open = d.debts.reduce((a, x) => a + debtResidual(x), 0);
+  const debts = d.debts.filter((x) => !x.credit), credits = d.debts.filter((x) => x.credit);
+  const sum = (l) => l.reduce((a, x) => a + debtResidual(x), 0);
+  const table = (list, label) => el('div', { class: 'scroll' }, el('table', null,
+    el('thead', null, el('tr', null, ['Nome', 'Tipo', 'Totale', label, 'Scadenza', 'Note', ''].map((h) => el('th', null, h)))),
+    el('tbody', null, list.map((x) => el('tr', null,
+      el('td', null, x.name), el('td', null, x.kind), el('td', { class: 'right' }, eur(x.total)),
+      el('td', { class: 'right' }, debtResidual(x) > 0 ? eur(debtResidual(x)) : '✓'), el('td', null, x.due || ''), el('td', null, x.note || ''),
+      el('td', { style: 'white-space:nowrap' }, el('button', { onclick: () => editDebt(x) }, 'Modifica'), ' ',
+        el('button', { class: 'danger', onclick: () => { if (confirm('Eliminare?')) { d.debts.splice(d.debts.indexOf(x), 1); touch(); render(); } } }, '✕')))))));
   return el('div', null,
-    el('div', { class: 'bar' }, el('strong', null, 'Ancora da pagare: ' + eur(open)), el('span', { class: 'muted' }, '(separati dalle spese)'), el('span', { class: 'sp' }),
+    el('div', { class: 'bar' }, el('strong', null, 'Ancora da pagare: ' + eur(sum(debts))), el('span', { class: 'muted' }, '(separati dalle spese)'), el('span', { class: 'sp' }),
       el('button', { class: 'primary', onclick: () => editDebt({ id: newId(), name: '', kind: 'Altro', total: 0, due: '', note: '', payments: [] }, true) }, '+ Nuovo debito')),
-    el('div', { class: 'scroll' }, el('table', null,
-      el('thead', null, el('tr', null, ['Nome', 'Tipo', 'Totale', 'Residuo', 'Scadenza', ''].map((h) => el('th', null, h)))),
-      el('tbody', null, d.debts.map((x) => el('tr', null,
-        el('td', null, x.name), el('td', null, x.kind), el('td', { class: 'right' }, eur(x.total)),
-        el('td', { class: 'right' }, debtResidual(x) > 0 ? eur(debtResidual(x)) : '✓'), el('td', null, x.due || ''),
-        el('td', { style: 'white-space:nowrap' }, el('button', { onclick: () => editDebt(x) }, 'Modifica'), ' ',
-          el('button', { class: 'danger', onclick: () => { if (confirm('Eliminare il debito?')) { d.debts.splice(d.debts.indexOf(x), 1); touch(); render(); } } }, '✕'))))))));
+    table(debts, 'Residuo'),
+    el('div', { class: 'bar', style: 'margin-top:14px' }, el('strong', null, 'Ancora da ricevere: ' + eur(sum(credits))), el('span', { class: 'sp' }),
+      el('button', { onclick: () => editDebt({ id: newId(), name: '', kind: 'Altro', total: 0, due: '', note: '', payments: [], credit: true }, true) }, '+ Nuovo credito')),
+    table(credits, 'Da ricevere'));
 }
 
 // ---------- Listino, impegni, appunti ----------
@@ -771,7 +776,7 @@ function viewSummary() {
 
 // ---------- schede e disegno ----------
 const TABS = [['agenda', 'Agenda', viewAgenda], ['lavori', 'Lavori', viewWorks], ['clienti', 'Clienti', viewClients], ['spese', 'Spese', viewExpenses],
-  ['debiti', 'Debiti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
+  ['debiti', 'Debiti e crediti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
 function render() {
   const tabs = $('#tabs');
   tabs.replaceChildren(...TABS.map(([id, label]) => el('button', { class: S.tab === id ? 'on' : '', onclick: () => { S.tab = id; render(); } }, label)));
