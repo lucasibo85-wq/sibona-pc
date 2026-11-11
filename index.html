@@ -115,6 +115,7 @@ const PROJECT = 'sibona-giardini';
 const STATUSES = ['Programmato', 'Da incassare', 'Pagato'];
 const BILLINGS = ['', 'Fattura', 'Contanti'];
 const REPEATS = [['', 'Mai'], ['w1', 'Ogni settimana'], ['w2', 'Ogni 2 settimane'], ['w3', 'Ogni 3 settimane'], ['w4', 'Ogni 4 settimane'], ['m1', 'Ogni mese']];
+const PCATS_DEFAULT = ['Spesa', 'Bar e ristoranti', 'Sport', 'Trasporti', 'Casa e bollette', 'Salute', 'Svago', 'Abbigliamento', 'Abbonamenti', 'Regali', 'Altro'];
 const DEBT_KINDS = ['Fattura da pagare', 'Prestito', 'Finanziamento', 'Altro'];
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 const LIMIT = 85000;
@@ -284,7 +285,8 @@ async function putRemote(text, stamp) {
 }
 function adopt(remote) {
   const d = JSON.parse(remote.text);
-  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts', 'stops']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts', 'stops', 'personal']) if (!Array.isArray(d[k])) d[k] = [];
+  if (!Array.isArray(d.pcats) || !d.pcats.length) d.pcats = PCATS_DEFAULT.slice();
   if (!Array.isArray(d.categories)) d.categories = ['Benzina', 'Semi', 'Terriccio', 'Piante', 'Attrezzi', 'Altro'];
   for (const w of d.works) {
     const b = blankWork(w.date);
@@ -663,6 +665,66 @@ function viewExpenses() {
         el('td', null, el('button', { class: 'danger', onclick: () => { d.expenses.splice(d.expenses.indexOf(e), 1); touch(); render(); } }, '✕'))))))));
 }
 
+// ---------- Spese personali (fuori dai conti dell'azienda) ----------
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+function editPcats() {
+  const d = S.data;
+  let box;
+  const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
+  function build() {
+    let inp;
+    const add = () => {
+      const n = inp.value.trim();
+      if (!n) return;
+      if (!d.pcats.some((x) => lc(x) === lc(n))) { d.pcats.push(n); touch(); }
+      redraw();
+    };
+    inp = el('input', { type: 'text', placeholder: 'Nuova categoria…', onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } } });
+    return el('div', null,
+      d.pcats.map((c, i) => el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:4px' }, el('span', { style: 'flex:1' }, c),
+        el('button', { class: 'danger', title: 'Togli dall\'elenco', onclick: () => { if (d.pcats.length > 1) { d.pcats.splice(i, 1); touch(); redraw(); } } }, '✕'))),
+      el('div', { style: 'display:flex;gap:8px;margin-top:8px' }, inp, el('button', { onclick: add }, '+ Aggiungi')),
+      el('div', { class: 'muted', style: 'margin-top:6px' }, 'Le spese già registrate con una categoria tolta restano com\'erano.'));
+  }
+  box = build();
+  openDialog('Categorie spese personali', () => box, () => { render(); }, 'Chiudi');
+}
+function viewPersonal() {
+  const d = S.data, f = S.f;
+  const now = new Date();
+  if (!f.pm) f.pm = { y: now.getFullYear(), m: now.getMonth() };
+  const inMonth = (e) => { const t = pDMY(e.date); return t && t.getFullYear() === f.pm.y && t.getMonth() === f.pm.m; };
+  const list = d.personal.filter(inMonth).sort((a, b) => (pDMY(b.date) || 0) - (pDMY(a.date) || 0));
+  const total = list.reduce((a, e) => a + num(e.amount), 0);
+  const by = (m) => list.filter((e) => e.method === m).reduce((a, e) => a + num(e.amount), 0);
+  const cats = {};
+  for (const e of list) cats[e.category] = (cats[e.category] || 0) + num(e.amount);
+  const move = (n) => { const t = new Date(f.pm.y, f.pm.m + n, 1); f.pm = { y: t.getFullYear(), m: t.getMonth() }; render(); };
+  const isNow = f.pm.y === now.getFullYear() && f.pm.m === now.getMonth();
+  return el('div', null,
+    el('div', { class: 'bar' },
+      el('button', { onclick: () => move(-1) }, '‹'),
+      el('strong', { style: 'min-width:150px;text-align:center' }, MESI[f.pm.m][0].toUpperCase() + MESI[f.pm.m].slice(1) + ' ' + f.pm.y),
+      el('button', { onclick: () => move(1) }, '›'),
+      el('span', { class: 'sp' }),
+      el('button', { onclick: editPcats }, 'Categorie'),
+      el('button', { class: 'primary', onclick: () => { d.personal.push({ id: newId(), category: d.pcats[0] || 'Altro', amount: 0, date: fDMY(isNow ? now : new Date(f.pm.y, f.pm.m, 1)), note: '', method: 'Digitale' }); touch(); render(); } }, '+ Nuova spesa')),
+    el('div', { class: 'muted', style: 'margin-bottom:8px' }, 'Vita di tutti i giorni: queste spese non rientrano nei conti dell\'azienda.'),
+    el('div', { class: 'bar' }, el('strong', null, 'Speso nel mese: ' + eur(total)),
+      el('span', { class: 'muted' }, 'contanti ' + eur(by('Contanti')) + ' • digitale ' + eur(by('Digitale')))),
+    Object.keys(cats).length ? el('div', { class: 'muted', style: 'margin-bottom:10px' },
+      Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => el('span', { style: 'display:inline-block;margin:0 14px 4px 0' }, c + ': ', el('strong', null, eur(v))))) : null,
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Data', 'Categoria', 'Nota', 'Pagamento', 'Importo', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, list.map((e) => el('tr', null,
+        el('td', { style: 'width:130px' }, dateField(() => e.date, (v) => e.date = v, render)),
+        el('td', { style: 'width:190px' }, selectField(() => e.category, (v) => e.category = v, d.pcats.includes(e.category) ? d.pcats : [...d.pcats, e.category])),
+        el('td', null, textField(() => e.note, (v) => e.note = v)),
+        el('td', { style: 'width:120px' }, selectField(() => e.method || '', (v) => e.method = v, [['', '—'], ['Contanti', 'Contanti'], ['Digitale', 'Digitale']], render)),
+        el('td', { class: 'num', style: 'width:110px' }, moneyField(() => e.amount, (v) => e.amount = v)),
+        el('td', null, el('button', { class: 'danger', onclick: () => { d.personal.splice(d.personal.indexOf(e), 1); touch(); render(); } }, '✕'))))))));
+}
+
 // ---------- Debiti ----------
 function debtResidual(x) { const p = (x.payments || []).reduce((a, m) => a + num(m.amount), 0); const r = num(x.total) - p; return r > 0.004 ? r : 0; }
 function editDebt(orig, isNew) {
@@ -775,7 +837,7 @@ function viewSummary() {
 }
 
 // ---------- schede e disegno ----------
-const TABS = [['agenda', 'Agenda', viewAgenda], ['lavori', 'Lavori', viewWorks], ['clienti', 'Clienti', viewClients], ['spese', 'Spese', viewExpenses],
+const TABS = [['agenda', 'Agenda', viewAgenda], ['lavori', 'Lavori', viewWorks], ['clienti', 'Clienti', viewClients], ['spese', 'Spese', viewExpenses], ['personali', 'Spese personali', viewPersonal],
   ['debiti', 'Debiti e crediti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
 function render() {
   const tabs = $('#tabs');
