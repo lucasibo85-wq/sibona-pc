@@ -285,7 +285,8 @@ async function putRemote(text, stamp) {
 }
 function adopt(remote) {
   const d = JSON.parse(remote.text);
-  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts', 'stops', 'personal']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const k of ['works', 'clients', 'events', 'expenses', 'notes', 'catalog', 'debts', 'stops', 'personal', 'quotes']) if (!Array.isArray(d[k])) d[k] = [];
+  if (!d.company || typeof d.company !== 'object') d.company = {};
   if (!Array.isArray(d.pcats) || !d.pcats.length) d.pcats = PCATS_DEFAULT.slice();
   if (!Array.isArray(d.categories)) d.categories = ['Benzina', 'Semi', 'Terriccio', 'Piante', 'Attrezzi', 'Altro'];
   for (const w of d.works) {
@@ -836,9 +837,159 @@ function viewSummary() {
           el('td', { class: 'right' }, eur(tInv + tCash + tOth)), el('td', { class: 'right' }, eur(tSp)), el('td', { class: 'right' }, eur(tInv + tCash + tOth - tSp))))));
 }
 
+
+// ---------- Preventivi e fatture (senza PDF: il PDF si crea dall'app) ----------
+const QSTAT = ['Da accettare', 'Accettato', 'Rifiutato'];
+const PAYS = ['Bonifico bancario', 'Contanti', 'Altro'];
+function nextQuoteNum() {
+  const c = S.data.company || {};
+  let n = parseInt(c.nextQuote, 10) || 1;
+  for (const q of S.data.quotes) if ((parseInt(q.number, 10) || 0) >= n) n = (parseInt(q.number, 10) || 0) + 1;
+  return n;
+}
+function quoteTotal(q) {
+  if (q.items && q.items[0] && q.items[0].flat) return num(q.total || q.items[0].t);
+  return (q.items || []).reduce((a, l) => a + num(l.q) * num(l.p), 0);
+}
+function editQuote(orig, isNew) {
+  const q = JSON.parse(JSON.stringify(orig));
+  const flat = !q.items || !q.items.length || !!q.items[0].flat;
+  const st = { flat, text: (q.items || []).map((l) => l.d).join('\n'), lines: flat ? [] : q.items.map((l) => ({ d: l.d, q: l.q, p: l.p })) };
+  const payKnown = PAYS.slice(0, 2).includes(q.pay);
+  st.payChoice = !q.pay ? 'Bonifico bancario' : (payKnown ? q.pay : 'Altro');
+  st.payOther = payKnown || !q.pay ? '' : q.pay;
+  let box;
+  const redraw = () => { const nb = build(); box.replaceWith(nb); box = nb; };
+  function build() {
+    const lines = el('div', null,
+      st.lines.map((l, i) => el('div', { style: 'display:grid;grid-template-columns:3fr 70px 100px 32px;gap:4px;margin-bottom:4px' },
+        textField(() => l.d, (v) => l.d = v), textField(() => l.q, (v) => l.q = num(v), { mode: 'decimal' }),
+        moneyField(() => l.p, (v) => l.p = v), el('button', { class: 'danger', onclick: () => { st.lines.splice(i, 1); redraw(); } }, '✕'))),
+      el('button', { onclick: () => { st.lines.push({ d: '', q: 1, p: 0 }); redraw(); } }, '+ Riga'));
+    return el('div', null,
+      el('div', { class: 'grid3' },
+        fld('Numero', textField(() => q.number, (v) => q.number = parseInt(v, 10) || 0, { mode: 'numeric' })),
+        fld('Data', dateField(() => q.date, (v) => q.date = v)),
+        fld('Stato', selectField(() => q.status, (v) => q.status = v, QSTAT))),
+      el('div', { class: 'grid2' },
+        fld('Cliente', textField(() => q.client, (v) => q.client = v, { list: 'clientNames' })),
+        fld('Indirizzo del cliente (una riga per riga)', el('textarea', { rows: 2, oninput: (e) => q.address = e.target.value }, q.address || ''))),
+      fld('Titolo (esce sopra le voci)', el('textarea', { rows: 2, oninput: (e) => q.title = e.target.value }, q.title || '')),
+      el('label', { style: 'display:flex;gap:8px;align-items:center;margin:6px 0' },
+        el('input', { type: 'checkbox', checked: st.flat, onchange: (e) => { st.flat = e.target.checked; redraw(); } }), 'Totale unico (solo descrizioni, senza prezzi per riga)'),
+      st.flat
+        ? el('div', null,
+            fld('Descrizioni (una voce per riga)', el('textarea', { rows: 8, oninput: (e) => st.text = e.target.value }, st.text)),
+            fld('Totale preventivo (€)', moneyField(() => q.total, (v) => q.total = v)))
+        : fld('Righe', lines),
+      fld('Note in fondo', el('textarea', { rows: 3, oninput: (e) => q.note = e.target.value }, q.note || '')),
+      el('div', { class: 'grid2' },
+        fld('Pagamento', selectField(() => st.payChoice, (v) => st.payChoice = v, PAYS, redraw)),
+        st.payChoice === 'Altro' ? fld('Quale', textField(() => st.payOther, (v) => st.payOther = v)) : el('div')));
+  }
+  box = build();
+  openDialog(isNew ? 'Nuovo preventivo' : 'Modifica preventivo', () => box, () => {
+    if (!pDMY(q.date)) { alert('Scrivi una data valida.'); return false; }
+    if (!String(q.client || '').trim()) { alert('Scrivi il cliente.'); return false; }
+    q.client = q.client.trim();
+    q.pay = st.payChoice === 'Altro' ? (st.payOther.trim() || 'Altro') : st.payChoice;
+    if (st.flat) {
+      const rows = st.text.split('\n').map((x) => x.replace(/\s+$/, '')).filter((x, i, a) => x.trim() || (i > 0 && i < a.length - 1));
+      const items = rows.map((d) => ({ d, q: 1, p: 0, flat: true }));
+      if (!items.length) items.push({ d: '', q: 1, p: 0, flat: true });
+      items[0].t = num(q.total); items[0].note = q.note || ''; items[0].pay = q.pay;
+      q.items = items; q.total = num(q.total);
+    } else {
+      q.items = st.lines.filter((l) => String(l.d || '').trim()).map((l) => ({ d: l.d, q: num(l.q) || 1, p: num(l.p) }));
+      q.total = q.items.reduce((a, l) => a + l.q * l.p, 0);
+    }
+    q.desc = q.title || (q.items[0] && q.items[0].d) || '';
+    ensureClient(q.client);
+    const i = S.data.quotes.findIndex((x) => x.id === orig.id);
+    if (i >= 0) S.data.quotes[i] = q; else S.data.quotes.push(q);
+    const c = S.data.company; if (q.number >= (parseInt(c.nextQuote, 10) || 1)) c.nextQuote = q.number + 1;
+    touch(); render();
+  });
+}
+function acceptQuote(q) {
+  if (q.workId && S.data.works.some((w) => w.id === q.workId)) { alert('Esiste già un lavoro per questo preventivo.'); return; }
+  if (!confirm('Segno il preventivo come accettato e creo il lavoro in "Lavori"?')) return;
+  const w = blankWork(fDMY(new Date()));
+  w.id = newId(); w.client = q.client; w.desc = q.title || q.desc || ('Preventivo ' + q.number); w.price = quoteTotal(q);
+  w.status = 'Programmato'; w.notes = 'Da preventivo n. ' + q.number;
+  S.data.works.push(w); fixWork(w);
+  q.status = 'Accettato'; q.workId = w.id; touch(); render();
+}
+function viewQuotes() {
+  const d = S.data, f = S.f;
+  const list = d.quotes.slice().sort((a, b) => (b.number || 0) - (a.number || 0)).filter((q) => !f.qst || q.status === f.qst);
+  return el('div', null,
+    el('div', { class: 'bar' },
+      el('select', { onchange: (e) => { f.qst = e.target.value; render(); } }, [['', 'Tutti gli stati'], ...QSTAT.map((x) => [x, x])].map((o) => el('option', { value: o[0], selected: (f.qst || '') === o[0] }, o[1]))),
+      el('span', { class: 'muted' }, 'Il PDF si crea e si condivide dall\'app sul telefono.'), el('span', { class: 'sp' }),
+      el('button', { class: 'primary', onclick: () => editQuote({ id: newId(), number: nextQuoteNum(), date: fDMY(new Date()), client: '', address: '', title: '', desc: '', items: [], total: 0, note: '', pay: 'Bonifico bancario', status: 'Da accettare', workId: '' }, true) }, '+ Nuovo preventivo')),
+    el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['N.', 'Data', 'Cliente', 'Titolo', 'Totale', 'Stato', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, list.map((q) => el('tr', null,
+        el('td', null, String(q.number)), el('td', null, q.date), el('td', null, q.client), el('td', null, q.title || q.desc || ''),
+        el('td', { class: 'right' }, eur(quoteTotal(q))), el('td', null, q.status),
+        el('td', { style: 'white-space:nowrap' },
+          el('button', { onclick: () => editQuote(q) }, 'Modifica'), ' ',
+          q.status === 'Da accettare' ? el('button', { onclick: () => acceptQuote(q) }, 'Accettato') : null, ' ',
+          q.status === 'Da accettare' ? el('button', { onclick: () => { q.status = 'Rifiutato'; touch(); render(); } }, 'Rifiutato') : null, ' ',
+          el('button', { class: 'danger', onclick: () => { if (confirm('Eliminare il preventivo ' + q.number + '?')) { d.quotes.splice(d.quotes.indexOf(q), 1); touch(); render(); } } }, '✕'))))))),
+    list.length ? null : el('p', { class: 'muted' }, 'Nessun preventivo.'));
+}
+function nextInvoiceFor(date) {
+  const c = S.data.company, y = parseInt(c.invoiceYear, 10) || 2026;
+  return date.getFullYear() > y ? 1 : (parseInt(c.nextInvoice, 10) || 1);
+}
+function invLabel(n, date) { return 'Fattura ' + (date.getFullYear() >= 2027 ? n + '/' + String(date.getFullYear()).slice(2) : n) + ' del ' + fDMY(date); }
+function registerInvoice(w) {
+  const x = { date: fDMY(new Date()), num: 0 };
+  x.num = nextInvoiceFor(pDMY(x.date));
+  let box;
+  const build = () => el('div', null,
+    el('div', { class: 'muted' }, 'Registra la fattura per ' + (w.client || '') + ' – ' + (w.desc || '') + ' (' + eur(w.price) + '). Il PDF poi si crea dall\'app.'),
+    el('div', { class: 'grid2' }, fld('Numero', textField(() => x.num, (v) => x.num = parseInt(v, 10) || 0, { mode: 'numeric' })), fld('Data', dateField(() => x.date, (v) => x.date = v))));
+  box = build();
+  openDialog('Registra fattura', () => box, () => {
+    const dt = pDMY(x.date);
+    if (!dt || !x.num) { alert('Numero e data validi.'); return false; }
+    const c = S.data.company, y = parseInt(c.invoiceYear, 10) || 2026;
+    w.docs = [...(w.docs || []), invLabel(x.num, dt)];
+    w.toInvoice = false; if (!w.billing) w.billing = 'Fattura';
+    if (dt.getFullYear() > y || x.num >= (parseInt(c.nextInvoice, 10) || 1)) { if (dt.getFullYear() > y) c.invoiceYear = dt.getFullYear(); c.nextInvoice = x.num + 1; }
+    touch(); render();
+  }, 'Registra');
+}
+function viewInvoices() {
+  const d = S.data, c = d.company || {};
+  const todo = d.works.filter((w) => w.toInvoice);
+  const done = [];
+  for (const w of d.works) for (const l of (w.docs || [])) if (/^Fattura\b/i.test(l)) done.push({ w, l });
+  const key = (l) => { const m = l.match(/del (\d{2})\/(\d{2})\/(\d{4})/); const n = parseInt((l.match(/Fattura\s+(\d+)/i) || [])[1], 10) || 0; return (m ? m[3] + m[2] + m[1] : '') + String(n).padStart(6, '0'); };
+  done.sort((a, b) => key(b.l).localeCompare(key(a.l)));
+  return el('div', null,
+    el('div', { class: 'bar' }, el('strong', null, 'Prossima fattura: n. ' + (c.nextInvoice || '?')), el('span', { class: 'muted' }, '(il PDF si crea dall\'app)')),
+    el('h3', null, 'Da fatturare'),
+    todo.length ? el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Cliente', 'Lavoro', 'Importo', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, todo.map((w) => el('tr', null, el('td', null, w.client), el('td', null, w.desc || ''), el('td', { class: 'right' }, eur(w.price)),
+        el('td', { style: 'white-space:nowrap' }, el('button', { class: 'primary', onclick: () => registerInvoice(w) }, 'Registra fattura'), ' ',
+          el('button', { onclick: () => { w.toInvoice = false; touch(); render(); } }, 'Non serve')))))))
+      : el('p', { class: 'muted' }, 'Niente da fatturare.'),
+    el('h3', null, 'Fatture emesse'),
+    done.length ? el('div', { class: 'scroll' }, el('table', null,
+      el('thead', null, el('tr', null, ['Fattura', 'Cliente', 'Lavoro', 'Importo', ''].map((h) => el('th', null, h)))),
+      el('tbody', null, done.map(({ w, l }) => el('tr', null, el('td', null, l), el('td', null, w.client), el('td', null, w.desc || ''), el('td', { class: 'right' }, eur(w.price)),
+        el('td', null, el('button', { class: 'danger', onclick: () => { if (confirm('Tolgo "' + l + '" dall\'elenco? (non cambia il numero progressivo)')) { w.docs.splice(w.docs.indexOf(l), 1); touch(); render(); } } }, '✕')))))))
+      : el('p', { class: 'muted' }, 'Nessuna fattura.'));
+}
+
 // ---------- schede e disegno ----------
 const TABS = [['agenda', 'Agenda', viewAgenda], ['lavori', 'Lavori', viewWorks], ['clienti', 'Clienti', viewClients], ['spese', 'Spese', viewExpenses], ['personali', 'Spese personali', viewPersonal],
-  ['debiti', 'Debiti e crediti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
+  ['preventivi', 'Preventivi', viewQuotes], ['fatture', 'Fatture', viewInvoices], ['debiti', 'Debiti e crediti', viewDebts], ['riepilogo', 'Riepilogo', viewSummary], ['listino', 'Listino', viewCatalog], ['impegni', 'Impegni', viewEvents], ['appunti', 'Appunti', viewNotes]];
 function render() {
   const tabs = $('#tabs');
   tabs.replaceChildren(...TABS.map(([id, label]) => el('button', { class: S.tab === id ? 'on' : '', onclick: () => { S.tab = id; render(); } }, label)));
